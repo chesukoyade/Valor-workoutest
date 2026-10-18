@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VALOR - Premium Workout Notebook</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            400: '#D4AF37',
+                            500: '#C5A028',
+                            600: '#A38118',
+                        },
+                        dark: {
+                            bg: '#0a0a0f',
+                            card: '#14151e',
+                            border: '#262938',
+                            hover: '#1e202e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        serif: ['Cinzel', 'Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons & Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            background-color: #0a0a0f;
+            color: #f3f4f6;
+        }
+        
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #FFF099 0%, #D4AF37 50%, #9A7B1C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(20, 21, 30, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+        }
+
+        .notebook-lines {
+            background-image: repeating-linear-gradient(transparent, transparent 31px, rgba(255, 255, 255, 0.03) 31px, rgba(255, 255, 255, 0.03) 32px);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between overflow-hidden antialiased">
+
+    <!-- Top Header -->
+    <header class="pt-8 pb-3 px-5 glass-panel border-b border-dark-border z-20 flex justify-between items-center shrink-0">
+        <div>
+            <h1 class="text-2xl font-black tracking-widest gold-gradient-text font-serif">VALOR</h1>
+            <p class="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">Workout Notebook</p>
+        </div>
+        <div id="status-badge" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gold-500/10 text-gold-400 border border-gold-500/30">
+            LOG
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-4 max-w-md mx-auto w-full pb-28">
+
+        <!-- Date Header & Calendar Bar -->
+        <div class="flex justify-between items-center bg-dark-card/80 p-3 rounded-xl border border-dark-border">
+            <div class="flex items-center space-x-2">
+                <i class="fa-regular fa-calendar-days text-gold-400 text-lg"></i>
+                <span id="current-date-display" class="font-bold text-lg text-gray-100 tracking-wide">--月--日</span>
+            </div>
+            
+            <button onclick="openCalendarModal()" title="カレンダー" class="w-10 h-10 rounded-lg bg-dark-hover border border-dark-border flex items-center justify-center text-gray-300 hover:text-gold-400 hover:border-gold-500/40 transition active:scale-95">
+                <i class="fa-solid fa-calendar-days text-lg"></i>
+            </button>
+        </div>
+
+        <!-- TAB 1: NOTEBOOK VIEW (Default) -->
+        <div id="tab-notebook" class="space-y-4">
+            
+            <div class="bg-dark-card rounded-xl border border-dark-border p-4 shadow-xl notebook-lines relative">
+                <div class="flex justify-between items-center mb-4 pb-2 border-b border-dark-border">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-gold-500 shadow-[0_0_8px_rgba(212,175,55,0.6)]"></div>
+                        <h2 class="text-base font-bold text-gray-100 tracking-wide">トレーニング記録</h2>
+                    </div>
+                    <span id="day-ppl-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                        REST DAY
+                    </span>
+                </div>
+
+                <!-- Active Logs List -->
+                <div id="exercise-logs-container" class="space-y-4"></div>
+
+                <!-- Empty State -->
+                <div id="empty-log-msg" class="hidden py-12 text-center text-gray-500 text-xs">
+                    <i class="fa-solid fa-pen-to-square text-3xl mb-2 text-gray-600"></i>
+                    <p class="font-medium text-gray-400">本日の記録はまだありません</p>
+                    <p class="text-[10px] text-gray-500 mt-1">下のボタンから種目を追加して記録を開始しましょう</p>
+                </div>
+
+                <!-- Add Exercise Button -->
+                <div class="mt-6 pt-2">
+                    <button onclick="openExerciseSelectorModal()" class="w-full py-3.5 px-4 rounded-xl border-2 border-dashed border-gold-500/40 bg-gold-500/5 hover:bg-gold-500/10 hover:border-gold-500 transition flex items-center justify-center space-x-2 text-gold-400 font-bold text-sm shadow-md active:scale-[0.98]">
+                        <i class="fa-solid fa-plus-circle text-lg"></i>
+                        <span>種目を追加</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: ANALYTICS VIEW (Graph & Stats) -->
+        <div id="tab-analytics" class="hidden space-y-4">
+            <div class="bg-dark-card p-4 rounded-xl border border-dark-border space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-gray-100">重量・推移分析</h2>
+                        <p class="text-xs text-gray-400">記録したデータから成長率をグラフ化</p>
+                    </div>
+                    <i class="fa-solid fa-chart-line text-gold-400 text-xl"></i>
+                </div>
+
+                <!-- Exercise Selector for Graph -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-gray-400 mb-1">分析対象の種目</label>
+                    <select id="analytics-exercise-select" onchange="renderAnalyticsGraph()" class="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-xs text-gray-100 focus:outline-none focus:border-gold-500">
+                    </select>
+                </div>
+
+                <!-- Graph Metric Switcher -->
+                <div class="flex rounded-lg bg-dark-bg p-1 border border-dark-border text-xs font-bold">
+                    <button id="metric-btn-max" onclick="switchGraphMetric('max')" class="flex-1 py-1.5 rounded-md text-center transition bg-gold-500/20 text-gold-400">最大重量 (kg)</button>
+                    <button id="metric-btn-volume" onclick="switchGraphMetric('volume')" class="flex-1 py-1.5 rounded-md text-center transition text-gray-400">総ボリューム (kg)</button>
+                </div>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-dark-card p-3 rounded-xl border border-dark-border space-y-1">
+                    <p class="text-[10px] text-gray-400 font-medium">自己最高重量 (Max)</p>
+                    <p id="stat-max-weight" class="text-xl font-black text-gold-400">-- <span class="text-xs font-normal text-gray-400">kg</span></p>
+                </div>
+                <div class="bg-dark-card p-3 rounded-xl border border-dark-border space-y-1">
+                    <p class="text-[10px] text-gray-400 font-medium">総記録数 (Total Sets)</p>
+                    <p id="stat-total-sets" class="text-xl font-black text-gray-100">-- <span class="text-xs font-normal text-gray-400">sets</span></p>
+                </div>
+            </div>
+
+            <!-- Chart Canvas Wrapper -->
+            <div class="bg-dark-card p-4 rounded-xl border border-dark-border space-y-2">
+                <h3 id="chart-title" class="text-xs font-bold text-gray-300">重量推移チャート</h3>
+                <div class="relative w-full h-64">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: EXERCISE MANAGEMENT VIEW -->
+        <div id="tab-exercises" class="hidden space-y-4">
+            <div class="bg-dark-card p-4 rounded-xl border border-dark-border flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-gray-100">種目ライブラリ</h2>
+                    <p class="text-xs text-gray-400">Push / Pull / Leg に分類されたトレーニング</p>
+                </div>
+                <button onclick="openCustomExerciseModal()" class="px-3 py-1.5 rounded-lg bg-gold-500 text-black font-bold text-xs hover:bg-gold-400 transition flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-plus text-[10px]"></i> 新規作成
+                </button>
+            </div>
+
+            <!-- PPL Category Tabs -->
+            <div class="flex rounded-xl bg-dark-card p-1 border border-dark-border text-xs font-bold">
+                <button onclick="switchPPLCategory('push')" id="ppl-tab-push" class="flex-1 py-2 rounded-lg text-center transition bg-red-500/20 text-red-400 border border-red-500/40">
+                    Push
+                </button>
+                <button onclick="switchPPLCategory('pull')" id="ppl-tab-pull" class="flex-1 py-2 rounded-lg text-center transition text-gray-400">
+                    Pull
+                </button>
+                <button onclick="switchPPLCategory('leg')" id="ppl-tab-leg" class="flex-1 py-2 rounded-lg text-center transition text-gray-400">
+                    Leg
+                </button>
+            </div>
+
+            <!-- List of Exercises -->
+            <div id="exercise-library-list" class="space-y-2"></div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 glass-panel border-t border-dark-border px-4 py-2 z-30 max-w-md mx-auto">
+        <div class="flex justify-around items-center">
+            <button onclick="switchMainTab('notebook')" id="nav-btn-notebook" class="flex flex-col items-center py-1 px-4 rounded-xl transition text-gold-400">
+                <i class="fa-solid fa-book-bookmark text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-wider">ノート</span>
+            </button>
+            <button onclick="switchMainTab('analytics')" id="nav-btn-analytics" class="flex flex-col items-center py-1 px-4 rounded-xl transition text-gray-500 hover:text-gray-300">
+                <i class="fa-solid fa-chart-column text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-wider">分析グラフ</span>
+            </button>
+            <button onclick="switchMainTab('exercises')" id="nav-btn-exercises" class="flex flex-col items-center py-1 px-4 rounded-xl transition text-gray-500 hover:text-gray-300">
+                <i class="fa-solid fa-list-check text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-wider">種目</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MODAL 1: Calendar View Modal -->
+    <div id="calendar-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-card border border-dark-border rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl relative">
+            <button onclick="closeCalendarModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-full bg-dark-hover">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center">
+                <h3 class="text-lg font-bold font-serif gold-gradient-text">TRAINING LOG CALENDAR</h3>
+                <p class="text-xs text-gray-400">日付を選択して過去のログを確認</p>
+            </div>
+
+            <div class="flex justify-between items-center px-2 py-1 bg-dark-bg/50 rounded-lg border border-dark-border">
+                <button onclick="changeMonth(-1)" class="text-gold-400 hover:text-gold-300 p-2"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="calendar-month-year" class="font-bold text-sm tracking-wide text-gray-200">----年 --月</span>
+                <button onclick="changeMonth(1)" class="text-gold-400 hover:text-gold-300 p-2"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 text-center text-xs">
+                <span class="text-red-400 font-bold py-1">日</span>
+                <span class="text-gray-400 py-1">月</span>
+                <span class="text-gray-400 py-1">火</span>
+                <span class="text-gray-400 py-1">水</span>
+                <span class="text-gray-400 py-1">木</span>
+                <span class="text-gray-400 py-1">金</span>
+                <span class="text-blue-400 font-bold py-1">土</span>
+            </div>
+            <div id="calendar-days-grid" class="grid grid-cols-7 gap-1 text-xs"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Exercise Selector Modal -->
+    <div id="exercise-select-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-dark-card border-t sm:border border-dark-border rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center pb-2 border-b border-dark-border">
+                <h3 class="text-base font-bold text-gray-100">種目を選択してノートに追加</h3>
+                <button onclick="closeExerciseSelectorModal()" class="text-gray-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-full bg-dark-hover">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex rounded-xl bg-dark-bg p-1 border border-dark-border text-xs font-bold">
+                <button onclick="filterModalCategory('all')" id="modal-filter-all" class="flex-1 py-1.5 rounded-lg text-center transition bg-gold-500/20 text-gold-400">すべて</button>
+                <button onclick="filterModalCategory('push')" id="modal-filter-push" class="flex-1 py-1.5 rounded-lg text-center transition text-gray-400">Push</button>
+                <button onclick="filterModalCategory('pull')" id="modal-filter-pull" class="flex-1 py-1.5 rounded-lg text-center transition text-gray-400">Pull</button>
+                <button onclick="filterModalCategory('leg')" id="modal-filter-leg" class="flex-1 py-1.5 rounded-lg text-center transition text-gray-400">Leg</button>
+            </div>
+
+            <div id="modal-exercise-list" class="overflow-y-auto no-scrollbar space-y-2 flex-1 pr-1"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Custom Exercise Creation -->
+    <div id="custom-exercise-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-card border border-dark-border rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-dark-border pb-2">
+                <h3 class="text-base font-bold text-gray-100">新しい種目を登録</h3>
+                <button onclick="closeCustomExerciseModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-gray-400 mb-1 font-medium">種目名</label>
+                    <input type="text" id="new-ex-name" placeholder="例: ベンチプレス" class="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-gray-100 focus:outline-none focus:border-gold-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1 font-medium">分類 (PPL)</label>
+                    <select id="new-ex-category" class="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-gray-100 focus:outline-none focus:border-gold-500">
+                        <option value="push">Push (胸 / 肩 / 三頭)</option>
+                        <option value="pull">Pull (背中 / 二頭)</option>
+                        <option value="leg">Leg (脚 / 腹筋)</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="saveNewExercise()" class="w-full py-2.5 rounded-xl bg-gold-500 text-black font-bold text-xs hover:bg-gold-400 transition">
+                保存する
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let appState = {
+            selectedDate: new Date().toISOString().split('T')[0],
+            exercises: [],
+            logs: {},
+            activePPLCategory: 'push',
+            currentCalendarYear: new Date().getFullYear(),
+            currentCalendarMonth: new Date().getMonth(),
+            graphMetric: 'max' // 'max' or 'volume'
+        };
+
+        let analyticsChartInstance = null;
+
+        function initApp() {
+            const savedExercises = localStorage.getItem('valor_exercises');
+            if (savedExercises) {
+                appState.exercises = JSON.parse(savedExercises);
+            } else {
+                appState.exercises = [];
+                saveExercisesToStorage();
+            }
+
+            const savedLogs = localStorage.getItem('valor_logs');
+            if (savedLogs) {
+                appState.logs = JSON.parse(savedLogs);
+            } else {
+                appState.logs = {};
+                saveLogsToStorage();
+            }
+
+            updateDateDisplay();
+            renderCurrentLogs();
+            renderExerciseLibrary();
+            populateAnalyticsExerciseSelect();
+        }
+
+        function saveExercisesToStorage() {
+            localStorage.setItem('valor_exercises', JSON.stringify(appState.exercises));
+        }
+
+        function saveLogsToStorage() {
+            localStorage.setItem('valor_logs', JSON.stringify(appState.logs));
+        }
+
+        function updateDateDisplay() {
+            const dateObj = new Date(appState.selectedDate);
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const month = dateObj.getMonth() + 1;
+            const date = dateObj.getDate();
+            const dayName = days[dateObj.getDay()];
+
+            document.getElementById('current-date-display').innerText = `${month}月${date}日 (${dayName})`;
+            
+            const currentLogs = appState.logs[appState.selectedDate] || [];
+            const badge = document.getElementById('day-ppl-badge');
+            if (currentLogs.length > 0) {
+                const cat = currentLogs[0].category;
+                badge.innerText = `${cat.toUpperCase()} DAY`;
+                badge.className = `px-2 py-0.5 rounded text-[10px] font-bold border ${getPPLStyle(cat)}`;
+            } else {
+                badge.innerText = `REST DAY`;
+                badge.className = `px-2 py-0.5 rounded text-[10px] font-bold bg-gray-500/20 text-gray-400 border border-gray-500/30`;
+            }
+        }
+
+        function getPPLStyle(category) {
+            switch(category) {
+                case 'push': return 'bg-red-500/20 text-red-400 border-red-500/30';
+                case 'pull': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                case 'leg': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+            }
+        }
+
+        function renderCurrentLogs() {
+            const container = document.getElementById('exercise-logs-container');
+            const emptyMsg = document.getElementById('empty-log-msg');
+            const logsForDate = appState.logs[appState.selectedDate] || [];
+
+            container.innerHTML = '';
+
+            if (logsForDate.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+
+            emptyMsg.classList.add('hidden');
+
+            logsForDate.forEach((logItem, exIndex) => {
+                const exBlock = document.createElement('div');
+                exBlock.className = 'bg-dark-bg/80 border border-dark-border rounded-xl p-3 space-y-3 relative shadow-inner';
+
+                let setsHtml = '';
+                logItem.sets.forEach((set, setIndex) => {
+                    setsHtml += `
+                        <div class="flex items-center justify-between bg-dark-card px-3 py-2 rounded-lg border border-dark-border/60">
+                            <span class="text-xs font-bold text-gold-400 w-12">SET ${setIndex + 1}</span>
+                            <div class="flex items-center space-x-2 text-sm">
+                                <input type="number" step="0.5" value="${set.weight}" onchange="updateSetVal(${exIndex}, ${setIndex}, 'weight', this.value)" class="w-16 bg-dark-bg border border-dark-border rounded text-center text-gray-100 font-semibold focus:outline-none focus:border-gold-500 py-0.5">
+                                <span class="text-xs text-gray-400">kg</span>
+                                <span class="text-gray-600">×</span>
+                                <input type="number" value="${set.reps}" onchange="updateSetVal(${exIndex}, ${setIndex}, 'reps', this.value)" class="w-14 bg-dark-bg border border-dark-border rounded text-center text-gray-100 font-semibold focus:outline-none focus:border-gold-500 py-0.5">
+                                <span class="text-xs text-gray-400">回</span>
+                            </div>
+                            <button onclick="removeSet(${exIndex}, ${setIndex})" class="text-gray-600 hover:text-red-400 text-xs p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                exBlock.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-dark-border/60 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full ${logItem.category === 'push' ? 'bg-red-500' : logItem.category === 'pull' ? 'bg-blue-500' : 'bg-emerald-500'}"></span>
+                            <h3 class="font-bold text-sm text-gray-200">${logItem.exerciseName}</h3>
+                        </div>
+                        <button onclick="removeExerciseFromLog(${exIndex})" class="text-xs text-gray-500 hover:text-red-400">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-1.5">
+                        ${setsHtml}
+                    </div>
+
+                    <button onclick="addSetToExercise(${exIndex})" class="w-full py-1.5 rounded-lg border border-dashed border-dark-border text-gray-400 hover:text-gold-400 hover:border-gold-500/40 text-xs font-semibold flex items-center justify-center gap-1 transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i> セットを追加
+                    </button>
+                `;
+
+                container.appendChild(exBlock);
+            });
+        }
+
+        function updateSetVal(exIndex, setIndex, field, val) {
+            const num = parseFloat(val) || 0;
+            appState.logs[appState.selectedDate][exIndex].sets[setIndex][field] = num;
+            saveLogsToStorage();
+        }
+
+        function addSetToExercise(exIndex) {
+            const currentSets = appState.logs[appState.selectedDate][exIndex].sets;
+            const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : { weight: 20, reps: 10 };
+            currentSets.push({ weight: lastSet.weight, reps: lastSet.reps });
+            saveLogsToStorage();
+            renderCurrentLogs();
+        }
+
+        function removeSet(exIndex, setIndex) {
+            appState.logs[appState.selectedDate][exIndex].sets.splice(setIndex, 1);
+            saveLogsToStorage();
+            renderCurrentLogs();
+        }
+
+        function removeExerciseFromLog(exIndex) {
+            appState.logs[appState.selectedDate].splice(exIndex, 1);
+            saveLogsToStorage();
+            updateDateDisplay();
+            renderCurrentLogs();
+        }
+
+        function switchMainTab(tab) {
+            const tabs = ['notebook', 'analytics', 'exercises'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`nav-btn-${t}`);
+                if (t === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = 'flex flex-col items-center py-1 px-4 rounded-xl transition text-gold-400';
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = 'flex flex-col items-center py-1 px-4 rounded-xl transition text-gray-500 hover:text-gray-300';
+                }
+            });
+
+            if (tab === 'analytics') {
+                populateAnalyticsExerciseSelect();
+                renderAnalyticsGraph();
+            }
+        }
+
+        function populateAnalyticsExerciseSelect() {
+            const select = document.getElementById('analytics-exercise-select');
+            select.innerHTML = '';
+
+            if (appState.exercises.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.innerText = '登録された種目がありません';
+                select.appendChild(opt);
+                return;
+            }
+
+            appState.exercises.forEach(ex => {
+                const opt = document.createElement('option');
+                opt.value = ex.id;
+                opt.innerText = `${ex.name} (${ex.category.toUpperCase()})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchGraphMetric(metric) {
+            appState.graphMetric = metric;
+            const btnMax = document.getElementById('metric-btn-max');
+            const btnVol = document.getElementById('metric-btn-volume');
+
+            if (metric === 'max') {
+                btnMax.className = 'flex-1 py-1.5 rounded-md text-center transition bg-gold-500/20 text-gold-400';
+                btnVol.className = 'flex-1 py-1.5 rounded-md text-center transition text-gray-400';
+            } else {
+                btnMax.className = 'flex-1 py-1.5 rounded-md text-center transition text-gray-400';
+                btnVol.className = 'flex-1 py-1.5 rounded-md text-center transition bg-gold-500/20 text-gold-400';
+            }
+            renderAnalyticsGraph();
+        }
+
+        function renderAnalyticsGraph() {
+            const exerciseId = document.getElementById('analytics-exercise-select').value;
+            if (!exerciseId) {
+                document.getElementById('stat-max-weight').innerHTML = `-- <span class="text-xs font-normal text-gray-400">kg</span>`;
+                document.getElementById('stat-total-sets').innerHTML = `-- <span class="text-xs font-normal text-gray-400">sets</span>`;
+                if (analyticsChartInstance) analyticsChartInstance.destroy();
+                return;
+            }
+
+            const sortedDates = Object.keys(appState.logs).sort();
+            const graphData = [];
+            let allTimeMaxWeight = 0;
+            let totalSetsCount = 0;
+
+            sortedDates.forEach(dateStr => {
+                const dayLogs = appState.logs[dateStr];
+                dayLogs.forEach(item => {
+                    if (item.exerciseId === exerciseId || item.exerciseName === getExerciseNameById(exerciseId)) {
+                        let dayMaxWeight = 0;
+                        let dayVolume = 0;
+
+                        item.sets.forEach(s => {
+                            totalSetsCount++;
+                            if (s.weight > dayMaxWeight) dayMaxWeight = s.weight;
+                            if (s.weight > allTimeMaxWeight) allTimeMaxWeight = s.weight;
+                            dayVolume += (s.weight * s.reps);
+                        });
+
+                        if (item.sets.length > 0) {
+                            graphData.push({
+                                date: dateStr,
+                                maxWeight: dayMaxWeight,
+                                volume: dayVolume
+                            });
+                        }
+                    }
+                });
+            });
+
+            document.getElementById('stat-max-weight').innerHTML = `${allTimeMaxWeight} <span class="text-xs font-normal text-gray-400">kg</span>`;
+            document.getElementById('stat-total-sets').innerHTML = `${totalSetsCount} <span class="text-xs font-normal text-gray-400">sets</span>`;
+
+            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            const labels = graphData.map(d => d.date.substring(5));
+            const values = graphData.map(d => appState.graphMetric === 'max' ? d.maxWeight : d.volume);
+
+            document.getElementById('chart-title').innerText = appState.graphMetric === 'max' 
+                ? '最高重量の推移 (kg)' 
+                : '総ボリュームの推移 (kg×回数)';
+
+            if (analyticsChartInstance) {
+                analyticsChartInstance.destroy();
+            }
+
+            analyticsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.length ? labels : ['データなし'],
+                    datasets: [{
+                        label: appState.graphMetric === 'max' ? 'Max Weight (kg)' : 'Volume (kg)',
+                        data: values.length ? values : [0],
+                        borderColor: '#D4AF37',
+                        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#D4AF37',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getExerciseNameById(id) {
+            const found = appState.exercises.find(e => e.id === id);
+            return found ? found.name : '';
+        }
+
+        function switchPPLCategory(cat) {
+            appState.activePPLCategory = cat;
+            ['push', 'pull', 'leg'].forEach(c => {
+                const btn = document.getElementById(`ppl-tab-${c}`);
+                if (c === cat) {
+                    btn.className = `flex-1 py-2 rounded-lg text-center transition ${getPPLTabActiveStyle(c)}`;
+                } else {
+                    btn.className = 'flex-1 py-2 rounded-lg text-center transition text-gray-400 hover:text-gray-200';
+                }
+            });
+            renderExerciseLibrary();
+        }
+
+        function getPPLTabActiveStyle(c) {
+            if (c === 'push') return 'bg-red-500/20 text-red-400 border border-red-500/40';
+            if (c === 'pull') return 'bg-blue-500/20 text-blue-400 border border-blue-500/40';
+            return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        }
+
+        function renderExerciseLibrary() {
+            const list = document.getElementById('exercise-library-list');
+            list.innerHTML = '';
+
+            const filtered = appState.exercises.filter(ex => ex.category === appState.activePPLCategory);
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="py-8 text-center text-gray-500 text-xs bg-dark-card/50 rounded-xl border border-dark-border">
+                        <i class="fa-solid fa-folder-open text-2xl mb-1 text-gray-600 block"></i>
+                        種目が登録されていません。「新規作成」から追加してください。
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(ex => {
+                const item = document.createElement('div');
+                item.className = 'bg-dark-card border border-dark-border p-3 rounded-xl flex justify-between items-center shadow-sm';
+                item.innerHTML = `
+                    <h4 class="font-bold text-sm text-gray-200">${ex.name}</h4>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded ${getPPLStyle(ex.category)}">${ex.category}</span>
+                        <button onclick="deleteExercise('${ex.id}')" class="text-gray-600 hover:text-red-400 text-xs p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function deleteExercise(exId) {
+            appState.exercises = appState.exercises.filter(ex => ex.id !== exId);
+            saveExercisesToStorage();
+            renderExerciseLibrary();
+        }
+
+        function openCalendarModal() {
+            document.getElementById('calendar-modal').classList.remove('hidden');
+            renderCalendar();
+        }
+
+        function closeCalendarModal() {
+            document.getElementById('calendar-modal').classList.add('hidden');
+        }
+
+        function changeMonth(delta) {
+            appState.currentCalendarMonth += delta;
+            if (appState.currentCalendarMonth > 11) {
+                appState.currentCalendarMonth = 0;
+                appState.currentCalendarYear += 1;
+            } else if (appState.currentCalendarMonth < 0) {
+                appState.currentCalendarMonth = 11;
+                appState.currentCalendarYear -= 1;
+            }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = appState.currentCalendarYear;
+            const month = appState.currentCalendarMonth;
+            document.getElementById('calendar-month-year').innerText = `${year}年 ${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            const grid = document.getElementById('calendar-days-grid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const cell = document.createElement('button');
+                
+                const isSelected = dateStr === appState.selectedDate;
+                const hasLogs = appState.logs[dateStr] && appState.logs[dateStr].length > 0;
+                const logCat = hasLogs ? appState.logs[dateStr][0].category : null;
+
+                let dotColor = '';
+                if (logCat === 'push') dotColor = 'bg-red-500';
+                else if (logCat === 'pull') dotColor = 'bg-blue-500';
+                else if (logCat === 'leg') dotColor = 'bg-emerald-500';
+
+                cell.className = `h-10 rounded-lg border border-dark-border flex flex-col items-center justify-center relative hover:border-gold-500 transition ${isSelected ? 'border-gold-500 bg-gold-500/10 font-bold text-gold-400' : 'bg-dark-bg text-gray-300'}`;
+                cell.onclick = () => selectDateFromCalendar(dateStr);
+
+                cell.innerHTML = `
+                    <span>${day}</span>
+                    ${hasLogs ? `<span class="w-1.5 h-1.5 rounded-full ${dotColor} absolute bottom-1"></span>` : ''}
+                `;
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function selectDateFromCalendar(dateStr) {
+            appState.selectedDate = dateStr;
+            updateDateDisplay();
+            renderCurrentLogs();
+            closeCalendarModal();
+        }
+
+        function openExerciseSelectorModal() {
+            document.getElementById('exercise-select-modal').classList.remove('hidden');
+            renderModalExerciseList('all');
+        }
+
+        function closeExerciseSelectorModal() {
+            document.getElementById('exercise-select-modal').classList.add('hidden');
+        }
+
+        function filterModalCategory(cat) {
+            ['all', 'push', 'pull', 'leg'].forEach(c => {
+                const btn = document.getElementById(`modal-filter-${c}`);
+                if (c === cat) {
+                    btn.className = 'flex-1 py-1.5 rounded-lg text-center transition bg-gold-500/20 text-gold-400';
+                } else {
+                    btn.className = 'flex-1 py-1.5 rounded-lg text-center transition text-gray-400';
+                }
+            });
+            renderModalExerciseList(cat);
+        }
+
+        function renderModalExerciseList(category) {
+            const container = document.getElementById('modal-exercise-list');
+            container.innerHTML = '';
+
+            const filtered = category === 'all' 
+                ? appState.exercises 
+                : appState.exercises.filter(ex => ex.category === category);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="py-8 text-center text-gray-500 text-xs">
+                        登録されている種目がありません。<br>「種目」タブから追加してください。
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(ex => {
+                const item = document.createElement('button');
+                item.className = 'w-full text-left p-3 rounded-xl bg-dark-bg border border-dark-border hover:border-gold-500/50 flex justify-between items-center transition group';
+                item.onclick = () => addExerciseToDateLog(ex);
+
+                item.innerHTML = `
+                    <span class="font-bold text-sm text-gray-200 group-hover:text-gold-400 transition">${ex.name}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${getPPLStyle(ex.category)} uppercase">${ex.category}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function addExerciseToDateLog(exerciseObj) {
+            if (!appState.logs[appState.selectedDate]) {
+                appState.logs[appState.selectedDate] = [];
+            }
+
+            appState.logs[appState.selectedDate].push({
+                exerciseId: exerciseObj.id,
+                exerciseName: exerciseObj.name,
+                category: exerciseObj.category,
+                sets: [
+                    { weight: 40, reps: 10 },
+                    { weight: 40, reps: 10 }
+                ]
+            });
+
+            saveLogsToStorage();
+            updateDateDisplay();
+            renderCurrentLogs();
+            closeExerciseSelectorModal();
+        }
+
+        function openCustomExerciseModal() {
+            document.getElementById('custom-exercise-modal').classList.remove('hidden');
+        }
+
+        function closeCustomExerciseModal() {
+            document.getElementById('custom-exercise-modal').classList.add('hidden');
+        }
+
+        function saveNewExercise() {
+            const name = document.getElementById('new-ex-name').value.trim();
+            const category = document.getElementById('new-ex-category').value;
+
+            if (!name) {
+                return;
+            }
+
+            const newEx = {
+                id: 'ex_' + Date.now(),
+                name,
+                category
+            };
+
+            appState.exercises.push(newEx);
+            saveExercisesToStorage();
+            renderExerciseLibrary();
+
+            document.getElementById('new-ex-name').value = '';
+            closeCustomExerciseModal();
+        }
+
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
